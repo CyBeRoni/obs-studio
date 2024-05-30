@@ -20,6 +20,7 @@ class DeckLinkDevice {
 	decklink_bool_t supportsExternalKeyer = false;
 	decklink_bool_t supportsInternalKeyer = false;
 	decklink_bool_t supportsHDRMetadata = false;
+	decklink_bool_t audioOutputEnabled = false;
 	int64_t subDeviceIndex = 0;
 	int64_t numSubDevices = 0;
 	int64_t minimumPrerollFrames = 3;
@@ -61,6 +62,9 @@ public:
 	bool GetInput(IDeckLinkInput **input);
 	bool GetOutput(IDeckLinkOutput **output);
 	bool GetKeyer(IDeckLinkKeyer **keyer);
+
+	bool GetAudioOutputEnabled(void);
+	void SetAudioOutputEnabled(bool newSetting);
 
 	inline bool IsDevice(IDeckLink *device_) { return device_ == device; }
 };

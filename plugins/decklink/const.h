@@ -5,6 +5,8 @@
 #define MODE_ID "mode_id"
 #define MODE_NAME "mode_name"
 #define CHANNEL_FORMAT "channel_format"
+#define AUDIO_ENABLE "audio_enable"
+#define AUDIO_TRACK "audio_track"
 #define PIXEL_FORMAT "pixel_format"
 #define COLOR_SPACE "color_space"
 #define COLOR_RANGE "color_range"
@@ -35,6 +37,9 @@
 #define TEXT_CHANNEL_FORMAT_4_1CH obs_module_text("ChannelFormat.4_1ch")
 #define TEXT_CHANNEL_FORMAT_5_1CH obs_module_text("ChannelFormat.5_1ch")
 #define TEXT_CHANNEL_FORMAT_7_1CH obs_module_text("ChannelFormat.7_1ch")
+#define TEXT_AUDIO_ENABLE obs_module_text("Audio.Enable")
+#define TEXT_AUDIO_ENABLE_TOOLTIP obs_module_text("Audio.Enable.Tooltip")
+#define TEXT_AUDIO_TRACK obs_module_text("Audio.Track")
 #define TEXT_BUFFERING obs_module_text("Buffering")
 #define TEXT_DWNS obs_module_text("DeactivateWhenNotShowing")
 #define TEXT_AUTO_START obs_module_text("AutoStart")

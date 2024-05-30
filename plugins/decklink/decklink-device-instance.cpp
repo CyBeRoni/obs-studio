@@ -591,12 +591,15 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 		return false;
 	}
 
-	const HRESULT audioResult = output_->EnableAudioOutput(
-		bmdAudioSampleRate48kHz, bmdAudioSampleType16bitInteger, 2,
-		bmdAudioOutputStreamTimestamped);
-	if (audioResult != S_OK) {
-		LOG(LOG_ERROR, "Failed to enable audio output");
-		return false;
+	if (device->GetAudioOutputEnabled()) {
+		LOG(LOG_INFO, "Enabling audio output");
+		const HRESULT audioResult = output_->EnableAudioOutput(
+			bmdAudioSampleRate48kHz, bmdAudioSampleType16bitInteger,
+			2, bmdAudioOutputStreamTimestamped);
+		if (audioResult != S_OK) {
+			LOG(LOG_ERROR, "Failed to enable audio output");
+			return false;
+		}
 	}
 
 	if (!mode_->GetFrameRate(&frameDuration, &frameTimescale)) {

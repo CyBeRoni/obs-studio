@@ -282,3 +282,13 @@ int32_t DeckLinkDevice::GetMaxChannel(void) const
 {
 	return maxChannel;
 }
+
+bool DeckLinkDevice::GetAudioOutputEnabled(void)
+{
+	return audioOutputEnabled;
+}
+
+void DeckLinkDevice::SetAudioOutputEnabled(bool newSetting)
+{
+	audioOutputEnabled = newSetting;
+}

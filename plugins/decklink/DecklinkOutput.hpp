@@ -20,6 +20,8 @@ public:
 	uint32_t audio_samplerate;
 	size_t audio_planes;
 	size_t audio_size;
+	bool audio_enable;
+	int audio_track;
 	int keyerMode;
 	bool force_sdr;
 

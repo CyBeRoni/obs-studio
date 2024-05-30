@@ -25,6 +25,10 @@ static void *decklink_output_create(obs_data_t *settings, obs_output_t *output)
 	decklinkOutput->modeID = obs_data_get_int(settings, MODE_ID);
 	decklinkOutput->keyerMode = (int)obs_data_get_int(settings, KEYER);
 	decklinkOutput->force_sdr = obs_data_get_bool(settings, FORCE_SDR);
+	decklinkOutput->audio_enable =
+		obs_data_get_bool(settings, AUDIO_ENABLE);
+	decklinkOutput->audio_track =
+		(int)obs_data_get_int(settings, AUDIO_TRACK);
 
 	ComPtr<DeckLinkDevice> device;
 	device.Set(deviceEnum->FindByHash(decklinkOutput->deviceHash));
@@ -56,25 +60,16 @@ static void decklink_output_update(void *data, obs_data_t *settings)
 	decklink->modeID = obs_data_get_int(settings, MODE_ID);
 	decklink->keyerMode = (int)obs_data_get_int(settings, KEYER);
 	decklink->force_sdr = obs_data_get_bool(settings, FORCE_SDR);
+	decklink->audio_enable = obs_data_get_bool(settings, AUDIO_ENABLE);
+	decklink->audio_track = (int)obs_data_get_int(settings, AUDIO_TRACK);
 }
 
 static bool decklink_output_start(void *data)
 {
 	auto *decklink = (DeckLinkOutput *)data;
-	struct obs_audio_info aoi;
-
-	if (!obs_get_audio_info(&aoi)) {
-		blog(LOG_WARNING, "No active audio");
-		return false;
-	}
 
 	if (!decklink->deviceHash || !*decklink->deviceHash)
 		return false;
-
-	decklink->audio_samplerate = aoi.samples_per_sec;
-	decklink->audio_planes = 2;
-	decklink->audio_size =
-		get_audio_size(AUDIO_FORMAT_16BIT, aoi.speakers, 1);
 
 	decklink->start_timestamp = 0;
 
@@ -103,15 +98,36 @@ static bool decklink_output_start(void *data)
 
 	device->SetKeyerMode(decklink->keyerMode);
 
+	if (decklink->audio_enable) {
+		struct obs_audio_info aoi;
+
+		if (!obs_get_audio_info(&aoi)) {
+			blog(LOG_ERROR, "decklink: No active audio but audio output enabled");
+			return false;
+		}
+
+		decklink->audio_samplerate = aoi.samples_per_sec;
+		decklink->audio_planes = 2;
+		decklink->audio_size =
+			get_audio_size(AUDIO_FORMAT_16BIT, aoi.speakers, 1);
+
+		struct audio_convert_info conversion = {};
+		conversion.format = AUDIO_FORMAT_16BIT;
+		conversion.speakers = SPEAKERS_STEREO;
+		conversion.samples_per_sec =
+			48000; // Only format the decklink supports
+
+		obs_output_set_audio_conversion(decklink->GetOutput(),
+						&conversion);
+
+		obs_output_set_mixer(decklink->GetOutput(),
+					     decklink->audio_track);
+
+		device->SetAudioOutputEnabled(decklink->audio_enable);
+	}
+
 	if (!decklink->Activate(device, decklink->modeID))
 		return false;
-
-	struct audio_convert_info conversion = {};
-	conversion.format = AUDIO_FORMAT_16BIT;
-	conversion.speakers = SPEAKERS_STEREO;
-	conversion.samples_per_sec = 48000; // Only format the decklink supports
-
-	obs_output_set_audio_conversion(decklink->GetOutput(), &conversion);
 
 	if (!obs_output_begin_data_capture(decklink->GetOutput(), 0))
 		return false;
@@ -169,8 +185,9 @@ static bool prepare_audio(DeckLinkOutput *decklink,
 	return true;
 }
 
-static void decklink_output_raw_audio(void *data, struct audio_data *frames)
+static void decklink_output_raw_audio(void *data, size_t idx, struct audio_data *frames)
 {
+	UNUSED_PARAMETER(idx);
 	auto *decklink = (DeckLinkOutput *)data;
 	struct audio_data in;
 
@@ -280,7 +297,27 @@ static obs_properties_t *decklink_output_properties(void *unused)
 	obs_properties_add_list(props, KEYER, TEXT_ENABLE_KEYER,
 				OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 
+	obs_property_t *audio_enable =
+		obs_properties_add_bool(props, AUDIO_ENABLE, TEXT_AUDIO_ENABLE);
+	obs_property_set_long_description(audio_enable,
+					  TEXT_AUDIO_ENABLE_TOOLTIP);
+	obs_property_t *tracklist =
+		obs_properties_add_list(props, AUDIO_TRACK,
+					TEXT_AUDIO_TRACK,
+					OBS_COMBO_TYPE_LIST,
+					OBS_COMBO_FORMAT_INT);
+
+	for (int i = 0; i < MAX_AUDIO_MIXES; i++)
+		obs_property_list_add_int(tracklist,
+					  std::to_string(i + 1).c_str(), i);
+
 	return props;
+}
+
+static void decklink_output_defaults(obs_data_t *settings)
+{
+	obs_data_set_default_bool(settings, AUDIO_ENABLE, true);
+	obs_data_set_default_int(settings, AUDIO_TRACK, 0);
 }
 
 static const char *decklink_output_get_name(void *)
@@ -293,15 +330,16 @@ struct obs_output_info create_decklink_output_info()
 	struct obs_output_info decklink_output_info = {};
 
 	decklink_output_info.id = "decklink_output";
-	decklink_output_info.flags = OBS_OUTPUT_AV;
+	decklink_output_info.flags = OBS_OUTPUT_AV | OBS_OUTPUT_MULTI_TRACK_AUDIO;
 	decklink_output_info.get_name = decklink_output_get_name;
 	decklink_output_info.create = decklink_output_create;
 	decklink_output_info.destroy = decklink_output_destroy;
 	decklink_output_info.start = decklink_output_start;
 	decklink_output_info.stop = decklink_output_stop;
 	decklink_output_info.get_properties = decklink_output_properties;
+	decklink_output_info.get_defaults = decklink_output_defaults;
 	decklink_output_info.raw_video = decklink_output_raw_video;
-	decklink_output_info.raw_audio = decklink_output_raw_audio;
+	decklink_output_info.raw_audio2 = decklink_output_raw_audio;
 	decklink_output_info.update = decklink_output_update;
 
 	return decklink_output_info;
