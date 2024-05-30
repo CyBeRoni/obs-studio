@@ -31,7 +31,7 @@ void DecklinkOutputUI::SetupPropertiesView()
 	if (propertiesView)
 		delete propertiesView;
 
-	obs_data_t *settings = obs_data_create();
+	obs_data_t *settings = obs_output_defaults("decklink_output");
 
 	OBSData data = load_settings();
 	if (data)
@@ -68,7 +68,7 @@ void DecklinkOutputUI::SetupPreviewPropertiesView()
 	if (previewPropertiesView)
 		delete previewPropertiesView;
 
-	obs_data_t *settings = obs_data_create();
+	obs_data_t *settings = obs_output_defaults("decklink_output");
 
 	OBSData data = load_preview_settings();
 	if (data)
